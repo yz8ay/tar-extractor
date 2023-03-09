@@ -5,6 +5,6 @@ Only normal file, hard/symbolic link, and directory with short name are supporte
 
 ## Usage
 ```
-make
-./main <.tar file>
+$ make
+$ ./main <.tar file>
 ```
