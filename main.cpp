@@ -15,7 +15,7 @@ struct Header {
   char checksum_for_header_block[8];
   char file_type;
   char name_of_linked_file[100];
-  char padding[256];
+  char padding[255];
 } __attribute__ ((__packed__));
 
 int OctalStringToInt(char* string, int size) {
@@ -28,16 +28,28 @@ int OctalStringToInt(char* string, int size) {
   return res;
 }
 
+bool IsFilledWithZero(Header* header) {
+  Header header_zero{0};
+  if (!memcmp(header, &header_zero, sizeof(Header))) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 int main(int argc, char** argv) {
   if (argc != 2) {
-    std::cerr << "argument error" << std::endl;
+    std::cerr << "Argument error" << std::endl;
+    std::exit(EXIT_FAILURE);
   }
 
   std::ifstream ifs(argv[1], std::ios::binary | std::ios::in);
   if (!ifs.is_open()) {
-    std::cerr << "cannot open file" << std::endl;
+    std::cerr << "Cannot open file" << std::endl;
     std::exit(EXIT_FAILURE);
   }
+
+  int header_zero_count = 0;
 
   for (;;) {
     char data, header_buf[512];
@@ -48,7 +60,17 @@ int main(int argc, char** argv) {
     }
     Header* header = reinterpret_cast<Header*>(header_buf);
 
-    if (header->file_name[0] == 0) break; // need to check whether two consecutive blocks are filled with 0
+    // check whether two consecutive blocks are filled with 0
+    if (IsFilledWithZero(header)) {
+      if (header_zero_count == 1) {
+        break;  // end of file
+      }
+      ++header_zero_count;
+      continue;
+    } else if (header_zero_count == 1) {
+      std::cerr << "Header error" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
 
     std::string path{header->file_name};
     std::size_t last_slash_index = path.rfind('/');
