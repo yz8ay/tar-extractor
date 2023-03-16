@@ -27,8 +27,8 @@ int OctalStringToInt(char* string, int size) {
   return res;
 }
 
+const Header header_zero{0};
 bool IsFilledWithZero(Header* header) {
-  Header header_zero{0};
   if (!memcmp(header, &header_zero, sizeof(Header))) {
     return true;
   } else {
