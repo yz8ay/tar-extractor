@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
-#include <cmath>
 
 struct Header {
   char file_name[100];
@@ -23,7 +22,7 @@ int OctalStringToInt(char* string, int size) {
   int pos = 0;
   size -= 2;  // count NUL
   while (size > 0) {
-    res += (string[size--]  - '0') * static_cast<int>(pow(8, pos++));
+    res += (string[size--]  - '0') * (1 << (3 * pos++));  // (1<<(3*pos++)) == pow(8, pos++)
   }
   return res;
 }
