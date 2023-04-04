@@ -22,7 +22,7 @@ int OctalStringToInt(char* string, int size) {
   int pos = 0;
   size -= 2;  // count NUL
   while (size > 0) {
-    res += (string[size--]  - '0') * (1 << (3 * pos++));  // (1<<(3*pos++)) == pow(8, pos++)
+    res += (string[size--]  - '0') * (1 << (3 * pos++));
   }
   return res;
 }
@@ -36,16 +36,16 @@ bool IsFilledWithZero(Header* header) {
   }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
   if (argc != 2) {
     std::cerr << "Argument error" << std::endl;
-    std::exit(EXIT_FAILURE);
+    return 1;
   }
 
   std::ifstream ifs(argv[1], std::ios::binary | std::ios::in);
   if (!ifs.is_open()) {
-    std::cerr << "Cannot open file" << std::endl;
-    std::exit(EXIT_FAILURE);
+    std::cerr << "Failed to open file" << std::endl;
+    return 1;
   }
 
   int header_zero_count = 0;
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
       continue;
     } else if (header_zero_count == 1) {
       std::cerr << "Header error" << std::endl;
-      std::exit(EXIT_FAILURE);
+      return 1;
     }
 
     std::string path{header->file_name};
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
           ifs.get(data);
           file_content[i] = data;
         }
-        std::ofstream file(path);
+        std::ofstream file{path};
         file.write(file_content, file_size);
         free(file_content);
         ifs.ignore(512 - file_size % 512);  // move to next block
@@ -101,8 +101,7 @@ int main(int argc, char** argv) {
         break;
       default:
         std::cerr << "Unsupported file type: " << header->file_type << std::endl;
-        std::exit(EXIT_FAILURE);
-        break;
+        return 1;
     }
     std::cout << path << std::endl;
   }
