@@ -14,8 +14,17 @@ struct Header {
   char checksum_for_header_block[8];
   char file_type;
   char name_of_linked_file[100];
-  char padding[255];
+  char ustar_indicator[6];
+  char ustar_version[2];
+  char owner_user_name[32];
+  char owner_group_name[32];
+  char device_major_number[8];
+  char device_minor_number[8];
+  char file_name_prefix[155];
+  char padding[12];
 } __attribute__ ((__packed__));
+
+static_assert(sizeof(Header) == 512, "Header size must be 512 bytes");
 
 int OctalStringToInt(char* string, int size) {
   int res = 0;
