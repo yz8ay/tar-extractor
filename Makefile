@@ -2,14 +2,14 @@ CC = g++
 TARGET = main
 OBJS = main.o
 
-CXXFLAGS = -O2 -Wall -std=c++2a
+CXXFLAGS = -Wall -Wextra -std=c++2a
 
 .PHONY: all
 all: $(TARGET)
 
 .PHONY: clean
 clean:
-	rm -rf *.o
+	rm -rf *.o $(TARGET)
 
 $(TARGET): $(OBJS) Makefile
 	$(CC) $(OBJS) -o $@
