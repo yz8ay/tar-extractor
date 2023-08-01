@@ -36,9 +36,9 @@ static int OctalStringToInt(char* string, int size) {
   return res;
 }
 
-static const Header header_zero{0};
+static const auto header_zero = std::make_unique<Header>();
 static bool IsFilledWithZero(const std::unique_ptr<Header>& header) {
-  if (!memcmp(header.get(), &header_zero, sizeof(Header))) {
+  if (!memcmp(header.get(), header_zero.get(), sizeof(Header))) {
     return true;
   }
   return false;
