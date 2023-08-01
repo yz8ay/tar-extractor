@@ -1,8 +1,8 @@
+#include <cstring>
 #include <iostream>
 #include <fstream>
-#include <cstdlib>
-#include <cstring>
 #include <filesystem>
+#include <memory>
 
 struct Header {
   char file_name[100];
@@ -26,7 +26,7 @@ struct Header {
 
 static_assert(sizeof(Header) == 512, "Header size must be 512 bytes");
 
-int OctalStringToInt(char* string, int size) {
+static int OctalStringToInt(char* string, int size) {
   int res = 0;
   int pos = 0;
   size -= 2;  // count NUL
@@ -36,82 +36,81 @@ int OctalStringToInt(char* string, int size) {
   return res;
 }
 
-const Header header_zero{0};
-bool IsFilledWithZero(Header* header) {
-  if (!memcmp(header, &header_zero, sizeof(Header))) {
+static const Header header_zero{0};
+static bool IsFilledWithZero(const std::unique_ptr<Header>& header) {
+  if (!memcmp(header.get(), &header_zero, sizeof(Header))) {
     return true;
-  } else {
-    return false;
   }
+  return false;
 }
 
-int main(int argc, char* argv[]) {
+static bool CheckHeader(std::ifstream& ifs, int& header_zero_count) {
+  auto header = std::make_unique<Header>();
+  ifs.read(reinterpret_cast<char*>(header.get()), sizeof(Header));
+
+  // check whether two consecutive blocks are filled with 0
+  if (IsFilledWithZero(header)) {
+    if (header_zero_count == 1) {
+      return true;  // end of file
+    }
+    ++header_zero_count;
+    return false;
+  } else if (header_zero_count == 1) {
+    std::cerr << "Header error" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
+  std::string path{header->file_name};
+  std::size_t last_slash_index = path.rfind('/');
+  std::string directory_path = path.substr(0, last_slash_index);
+  int file_size = OctalStringToInt(header->file_size, 12);
+
+  switch (header->file_type) {
+    case '0':
+    case '\0': {  // normal file
+      auto file_content = std::make_unique<char[]>(file_size);
+      ifs.read(file_content.get(), file_size);
+      std::ofstream file{path};
+      file.write(file_content.get(), file_size);
+      ifs.ignore(sizeof(Header) - file_size % sizeof(Header));  // move to next block
+      break;
+    }
+    case '1': // hard link
+      std::filesystem::create_hard_link(header->name_of_linked_file, path);
+      break;
+    case '2': // symbolic link
+      std::filesystem::create_symlink(header->name_of_linked_file, path);
+      break;
+    case '5': // directory
+      std::filesystem::create_directories(directory_path);
+      break;
+    default:
+      std::cerr << "Unsupported file type: " << header->file_type << std::endl;
+      std::exit(EXIT_FAILURE);
+  }
+  std::cout << path << std::endl;
+  return false;
+}
+
+int main(int argc, char** argv) {
   if (argc != 2) {
     std::cerr << "Argument error" << std::endl;
     return 1;
   }
-
-  std::ifstream ifs(argv[1], std::ios::binary | std::ios::in);
+  if (!std::filesystem::is_regular_file(argv[1])) {
+    std::cerr << "Not a regular file" << std::endl;
+    return 1;
+  }
+  std::ifstream ifs{argv[1], std::ios::binary | std::ios::in};
   if (!ifs.is_open()) {
     std::cerr << "Failed to open file" << std::endl;
     return 1;
   }
 
   int header_zero_count = 0;
-
   for (;;) {
-    char data, header_buf[512];
-
-    for (int i = 0; i < 512; ++i) {
-      ifs.get(data);
-      header_buf[i] = data;
-    }
-    Header* header = reinterpret_cast<Header*>(header_buf);
-
-    // check whether two consecutive blocks are filled with 0
-    if (IsFilledWithZero(header)) {
-      if (header_zero_count == 1) {
-        break;  // end of file
-      }
-      ++header_zero_count;
-      continue;
-    } else if (header_zero_count == 1) {
-      std::cerr << "Header error" << std::endl;
-      return 1;
-    }
-
-    std::string path{header->file_name};
-    std::size_t last_slash_index = path.rfind('/');
-    std::string directory_path = path.substr(0, last_slash_index);
-    int file_size = OctalStringToInt(header->file_size, 12);
-
-    switch (header->file_type) {
-      case '0':
-      case '\0': {  // normal file
-        char* file_content = (char*)malloc(file_size);
-        for (int i = 0; i < file_size; ++i) {
-          ifs.get(data);
-          file_content[i] = data;
-        }
-        std::ofstream file{path};
-        file.write(file_content, file_size);
-        free(file_content);
-        ifs.ignore(512 - file_size % 512);  // move to next block
-        break;
-      }
-      case '1': // hard link
-        std::filesystem::create_hard_link(header->name_of_linked_file, path);
-        break;
-      case '2': // symbolic link
-        std::filesystem::create_symlink(header->name_of_linked_file, path);
-        break;
-      case '5': // directory
-        std::filesystem::create_directories(directory_path);
-        break;
-      default:
-        std::cerr << "Unsupported file type: " << header->file_type << std::endl;
-        return 1;
-    }
-    std::cout << path << std::endl;
+    bool end = CheckHeader(ifs, header_zero_count);
+    if (end)
+      break;
   }
 }
