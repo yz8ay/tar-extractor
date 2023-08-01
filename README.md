@@ -1,10 +1,12 @@
 # tar-extractor
 
-## About
-It tries to understand the structure of .tar file without using any special library. Only normal file, hard/symbolic link, and directory with short name are supported now.
+## Overview
+
+It extracts a `tar` file without using any dedicated library. Currently it supports regular files, hard/symbolic links, and directories.
 
 ## Usage
-```
-$ make
-$ ./main <.tar file>
+
+```sh
+make
+./main <tar file>
 ```
