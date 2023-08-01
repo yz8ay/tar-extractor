@@ -44,30 +44,19 @@ static bool IsFilledWithZero(const std::unique_ptr<Header>& header) {
   return false;
 }
 
-static bool CheckHeader(std::ifstream& ifs, int& header_zero_count) {
-  auto header = std::make_unique<Header>();
-  ifs.read(reinterpret_cast<char*>(header.get()), sizeof(Header));
-
-  // check whether two consecutive blocks are filled with 0
-  if (IsFilledWithZero(header)) {
-    if (header_zero_count == 1) {
-      return true;  // end of file
-    }
-    ++header_zero_count;
-    return false;
-  } else if (header_zero_count == 1) {
-    std::cerr << "Header error" << std::endl;
-    std::exit(EXIT_FAILURE);
+static void CheckHeader(std::ifstream& ifs, const std::unique_ptr<Header>& header, std::string long_path = "") {
+  std::string path;
+  if (long_path == "") {
+    path = header->file_name;
+  } else {
+    path = long_path;
   }
-
-  std::string path{header->file_name};
   std::size_t last_slash_index = path.rfind('/');
   std::string directory_path = path.substr(0, last_slash_index);
   int file_size = OctalStringToInt(header->file_size, 12);
 
   switch (header->file_type) {
-    case '0':
-    case '\0': {  // normal file
+    case '0': { // normal file
       auto file_content = std::make_unique<char[]>(file_size);
       ifs.read(file_content.get(), file_size);
       std::ofstream file{path};
@@ -84,33 +73,71 @@ static bool CheckHeader(std::ifstream& ifs, int& header_zero_count) {
     case '5': // directory
       std::filesystem::create_directories(directory_path);
       break;
+    case 'x': { // extended header
+      // Read extended header data
+      auto tmp = std::make_unique<Header>();
+      ifs.read(reinterpret_cast<char*>(tmp.get()), sizeof(Header));
+      std::string extended_header_data{reinterpret_cast<char*>(tmp.get())};
+      size_t start_pos = extended_header_data.find("path=");
+      if (start_pos == std::string::npos) {
+        std::cerr << "Extended header error" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      start_pos += 5;
+      size_t end_pos = extended_header_data.find('\n', start_pos);
+      if (end_pos == std::string::npos) {
+        std::cerr << "Extended header error" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+      std::string long_file_name = extended_header_data.substr(start_pos, end_pos - start_pos);
+
+      // Read normal header using long file name
+      auto header = std::make_unique<Header>();
+      ifs.read(reinterpret_cast<char*>(header.get()), sizeof(Header));
+      CheckHeader(ifs, header, long_file_name);
+      break;
+    }
     default:
       std::cerr << "Unsupported file type: " << header->file_type << std::endl;
       std::exit(EXIT_FAILURE);
   }
-  std::cout << path << std::endl;
-  return false;
+
+  if (header->file_type != 'x')
+    std::cout << path << std::endl;
 }
 
 int main(int argc, char** argv) {
   if (argc != 2) {
-    std::cerr << "Argument error" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <tar file>" << std::endl;
     return 1;
   }
   if (!std::filesystem::is_regular_file(argv[1])) {
-    std::cerr << "Not a regular file" << std::endl;
+    std::cerr << argv[1] << " is not a regular file" << std::endl;
     return 1;
   }
   std::ifstream ifs{argv[1], std::ios::binary | std::ios::in};
   if (!ifs.is_open()) {
-    std::cerr << "Failed to open file" << std::endl;
+    std::cerr << "Failed to open file: " << argv[1] << std::endl;
     return 1;
   }
 
   int header_zero_count = 0;
   for (;;) {
-    bool end = CheckHeader(ifs, header_zero_count);
-    if (end)
-      break;
+    auto header = std::make_unique<Header>();
+    ifs.read(reinterpret_cast<char*>(header.get()), sizeof(Header));
+
+    // check whether two consecutive blocks are filled with 0
+    if (IsFilledWithZero(header)) {
+      if (header_zero_count == 1) {
+        break;  // end of file
+      }
+      ++header_zero_count;
+      continue;
+    } else if (header_zero_count == 1) {
+      std::cerr << "Header error" << std::endl;
+      return 1;
+    }
+
+    CheckHeader(ifs, header);
   }
 }
