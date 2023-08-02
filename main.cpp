@@ -5,6 +5,10 @@
 #include <memory>
 
 struct Header {
+  Header() {
+    std::memset(this, 0, sizeof(*this));
+  }
+
   char file_name[100];
   char file_mode[8];
   char owner_numeric_user_id[8];
