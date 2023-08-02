@@ -49,6 +49,12 @@ static bool IsFilledWithZero(const std::unique_ptr<Header>& header) {
 }
 
 static void CheckHeader(std::ifstream& ifs, const std::unique_ptr<Header>& header, std::string long_path = "") {
+  if (memcmp(header->ustar_indicator, "ustar", 5) ||
+      memcmp(header->ustar_version, "00", 2)) {
+    std::cerr << "Unsupported ustar format" << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
   std::string path;
   if (long_path == "") {
     path = header->file_name;
