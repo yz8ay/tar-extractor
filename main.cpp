@@ -117,17 +117,18 @@ static void CheckHeader(std::ifstream& ifs, const std::unique_ptr<Header>& heade
 }
 
 int main(int argc, char** argv) {
+  namespace fs = std::filesystem;
   if (argc != 2) {
     std::cerr << "Usage: " << argv[0] << " <tar file>" << std::endl;
     return 1;
   }
-  if (!std::filesystem::is_regular_file(argv[1])) {
-    std::cerr << argv[1] << " is not a regular file" << std::endl;
+  if (!fs::is_regular_file(argv[1])) {
+    std::cerr << fs::weakly_canonical(fs::absolute(argv[1])) << " is not a regular file" << std::endl;
     return 1;
   }
   std::ifstream ifs{argv[1], std::ios::binary | std::ios::in};
   if (!ifs.is_open()) {
-    std::cerr << "Failed to open file: " << argv[1] << std::endl;
+    std::cerr << "Failed to open file: " << fs::weakly_canonical(fs::absolute(argv[1])) << std::endl;
     return 1;
   }
 
