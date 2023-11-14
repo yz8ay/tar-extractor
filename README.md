@@ -1,8 +1,8 @@
-# tar-extractor
+# tar-unpacker
 
 ## Overview
 
-It extracts a `tar` file without using any dedicated library. Currently it supports regular files, hard/symbolic links, and directories.
+This application unpacks `tar` archives without dedicated libraries. It currently supports extracting regular files, hard links, symbolic links, and directories from tar files.
 
 ## Usage
 
