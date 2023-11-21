@@ -71,7 +71,9 @@ static void CheckHeader(std::ifstream& ifs, const std::unique_ptr<Header>& heade
       ifs.read(file_content.get(), file_size);
       std::ofstream file{path};
       file.write(file_content.get(), file_size);
-      ifs.ignore(sizeof(Header) - file_size % sizeof(Header));  // move to next block
+      size_t over_read_size = file_size % sizeof(Header);
+      if (over_read_size != 0)
+        ifs.ignore(sizeof(Header) - over_read_size);  // move to next block
       break;
     }
     case '1': // hard link
