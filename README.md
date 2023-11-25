@@ -7,6 +7,7 @@ This application unpacks `tar` archives without dedicated libraries. It currentl
 ## Usage
 
 ```sh
+cd src
 make
 ./main <tar file>
 ```
