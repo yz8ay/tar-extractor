@@ -1,6 +1,6 @@
 CC = g++
 TARGET = main
-OBJS = main.o
+OBJS = main.o tarball_unpacker.o
 
 CXXFLAGS = -Wall -Wextra -std=c++2a
 
